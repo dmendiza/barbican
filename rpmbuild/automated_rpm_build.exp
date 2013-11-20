@@ -4,6 +4,5 @@ spawn "./rpmbuild/build_rpm.sh"
 
 expect "Enter pass phrase: "
 send "\n"
-
-interact
+expect eof
 
