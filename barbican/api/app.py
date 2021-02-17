@@ -27,6 +27,7 @@ try:
 except ImportError:
     newrelic_loaded = False
 
+from microversion_parse import middleware as microversion
 from oslo_log import log
 
 from barbican.api.controllers import versions
@@ -35,6 +36,8 @@ from barbican.common import config
 from barbican.model import repositories
 from barbican import queue
 
+
+_SERVICE_TYPE = 'key-manager'
 CONF = config.CONF
 
 if newrelic_loaded:
@@ -91,7 +94,11 @@ def main_app(func):
             repositories.rollback()
             raise
 
-        wsgi_app = func(global_config, **local_conf)
+        wsgi_app = microversion.MicroversionMiddleware(
+            func(global_config, **local_conf),
+            _SERVICE_TYPE,
+            versions.ALL
+        )
 
         if newrelic_loaded:
             wsgi_app = newrelic.agent.WSGIApplicationWrapper(wsgi_app)
@@ -105,7 +112,8 @@ def main_app(func):
 def create_main_app(global_config, **local_conf):
     """uWSGI factory method for the Barbican-API application."""
     # Setup app with transactional hook enabled
-    return build_wsgi_app(versions.V1Controller(), transactional=True)
+    app = build_wsgi_app(versions.V1Controller(), transactional=True)
+
 
 
 def create_version_app(global_config, **local_conf):

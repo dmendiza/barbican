@@ -31,6 +31,9 @@ MIME_TYPE_JSON = 'application/json'
 MIME_TYPE_JSON_HOME = 'application/json-home'
 MEDIA_TYPE_JSON = 'application/vnd.openstack.key-manager-%s+json'
 
+_MICROVERSION_MIN = '1.0'
+_MICROVERSION_MAX = '1.1'
+ALL = [_MICROVERSION_MIN, _MICROVERSION_MAX]
 
 def _version_not_found():
     """Throw exception indicating version not found."""
@@ -124,28 +127,48 @@ class VersionsController(object):
     def index(self, **kwargs):
         pecan.abort(405)  # HTTP 405 Method Not Allowed as default
 
+    #@index.when(method='GET', template='json')
+    #@utils.allow_certain_content_types(MIME_TYPE_JSON, MIME_TYPE_JSON_HOME)
+    #def on_get(self, **kwargs):
+    #    """The list of versions is dependent on the context."""
+    #    self._redirect_to_default_json_home_if_needed(pecan.request)
+
+    #    if 'build' in kwargs:
+    #        return {'build': version.__version__}
+
+    #    versions_info = [version_class.get_version_info(pecan.request) for
+    #                     version_class in AVAILABLE_VERSIONS.values()]
+
+    #    version_output = {
+    #        'versions': {
+    #            'values': versions_info
+    #        }
+    #    }
+
+    #    # Since we are returning all the versions available, the proper status
+    #    # code is Multiple Choices (300)
+    #    pecan.response.status = 300
+    #    return version_output
     @index.when(method='GET', template='json')
-    @utils.allow_certain_content_types(MIME_TYPE_JSON, MIME_TYPE_JSON_HOME)
     def on_get(self, **kwargs):
-        """The list of versions is dependent on the context."""
-        self._redirect_to_default_json_home_if_needed(pecan.request)
+        version_discovery = {
+            "versions": [
+                {
+                    "id": "v1",
+                    "links": [
+                        {
+                            "href": "http://localhost:9311/v1/",  # TODO
+                            "rel": "self"
+                        }
+                    ],
+                    "status": "CURRENT",
+                    "max_version": "1.1",
+                    "min_version": "1.0",
 
-        if 'build' in kwargs:
-            return {'build': version.__version__}
-
-        versions_info = [version_class.get_version_info(pecan.request) for
-                         version_class in AVAILABLE_VERSIONS.values()]
-
-        version_output = {
-            'versions': {
-                'values': versions_info
-            }
+                }
+            ]
         }
-
-        # Since we are returning all the versions available, the proper status
-        # code is Multiple Choices (300)
-        pecan.response.status = 300
-        return version_output
+        return version_discovery
 
     def _redirect_to_default_json_home_if_needed(self, request):
         if self._mime_best_match(request.accept) == MIME_TYPE_JSON_HOME:
