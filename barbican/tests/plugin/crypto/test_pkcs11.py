@@ -210,8 +210,8 @@ class WhenTestingPKCS11(utils.BaseTestCase):
         self.lib.C_GetSlotList.side_effect = self._get_two_slot_list
         self.lib.C_GetTokenInfo.side_effect = \
             self._get_two_token_info_same_label
-        self.assertRaises(ValueError,
-                          self.pkcs11._get_slot_id, None, 'myLabel', 1)
+        slot_id = self.pkcs11._get_slot_id(None, 'myLabel', 1)
+        self.assertEqual(1, slot_id)
 
     def test_public_get_session(self):
         self.lib.C_GetSessionInfo.side_effect = self._get_session_public
