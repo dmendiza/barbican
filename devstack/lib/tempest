@@ -1,0 +1,6 @@
+function configure_barbican_tempest() {
+    iniset $TEMPEST_CONFIG service_available barbican True
+    if [[ "$BARBICAN_ENFORCE_SCOPE" == "True" ]]; then
+        iniset $TEMPEST_CONFIG enforce_scope barbican True
+    fi
+}
