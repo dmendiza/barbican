@@ -45,3 +45,4 @@ GITDIR["barbican-tempest-plugin"]=$DEST/barbican-tempest-plugin
 BARBICAN_ENFORCE_SCOPE=$(trueorfalse True ENFORCE_SCOPE)
 
 enable_service barbican
+enable_service barbican-softhsm

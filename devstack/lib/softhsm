@@ -1,0 +1,48 @@
+# SoftHSM functions
+# -----------------
+
+BARBICAN_SOFTHSM_CONFIG_HOME=${BARBICAN_SOFTHSM_CONFIG_HOME:-$HOME/.config/softhsm2}
+BARBICAN_SOFTHSM_DATA_HOME=${BARBICAN_SOFTHSM_DATA_HOME:-$HOME/.local/share/softhsm2/tokens}
+BARBICAN_SOFTHSM_TOKEN_LABEL=${BARBICAN_SOFTHSM_TOKEN_LABEL:-test_token}
+BARBICAN_SOFTHSM_PIN=${BARBICAN_SOFTHSM_PIN:-123456}
+BARBICAN_SOFTHSM_SO_PIN=${BARBICAN_SOFTHSM_SO_PIN:-12345678}
+BARBICAN_PKCS11_MKEK_LABEL=${BARBICAN_PKCS11_MKEK_LABEL:-test_mkek}
+BARBICAN_PKCS11_HMAC_LABEL=${BARBICAN_PKCS11_HMAC_LABEL:-test_hmac}
+
+# initialize_softhsm - Initialize a new token owned by stack user
+function initialize_softhsm {
+    echo_summary "Initializing SoftHSM token"
+    mkdir -p $BARBICAN_SOFTHSM_CONFIG_HOME
+    mkdir -p $BARBICAN_SOFTHSM_DATA_HOME
+    cat << EOF > $BARBICAN_SOFTHSM_CONFIG_HOME/softhsm2.conf
+directories.tokendir = $BARBICAN_SOFTHSM_DATA_HOME
+EOF
+    softhsm2-util --init-token --free \
+    --label $BARBICAN_SOFTHSM_TOKEN_LABEL \
+    --pin $BARBICAN_SOFTHSM_PIN \
+    --so-pin $BARBICAN_SOFTHSM_SO_PIN
+}
+
+# configure_softhsm_plugin - Set configuration options for PKCS#11 backend
+function configure_softhsm_plugin {
+    echo_summary "Configuring Barbican PKCS#11 backend with SoftHSM"
+    iniset $BARBICAN_CONF crypto enabled_crypto_plugins p11_crypto
+    iniset $BARBICAN_CONF p11_crypto_plugin library_path "/usr/lib/softhsm/libsofthsm2.so"
+    iniset $BARBICAN_CONF p11_crypto_plugin token_labels "$BARBICAN_SOFTHSM_TOKEN_LABEL"
+    iniset $BARBICAN_CONF p11_crypto_plugin login "$BARBICAN_SOFTHSM_PIN"
+    iniset $BARBICAN_CONF p11_crypto_plugin mkek_label "$BARBICAN_PKCS11_MKEK_LABEL"
+    iniset $BARBICAN_CONF p11_crypto_plugin encryption_mechanism "CKM_AES_GCM"
+    iniset $BARBICAN_CONF p11_crypto_plugin hmac_label "$BARBICAN_PKCS11_HMAC_LABEL"
+    iniset $BARBICAN_CONF p11_crypto_plugin hmac_key_type "CKK_GENERIC_SECRET"
+    iniset $BARBICAN_CONF p11_crypto_plugin hmac_keygen_mechanism "CKM_GENERIC_SECRET_KEY_GEN"
+    iniset $BARBICAN_CONF p11_crypto_plugin key_wrap_mechanism "CKM_AES_KEY_WRAP_KWP"
+    iniset $BARBICAN_CONF p11_crypto_plugin key_wrap_generate_iv False
+}
+
+# generate_softhsm_master_keys - Generate MKEK and HMAC keys
+function generate_softhsm_master_keys {
+    barbican-manage hsm check_mkek --label "$BARBICAN_PKCS11_MKEK_LABEL" || \
+    barbican-manage hsm gen_mkek --label "$BARBICAN_PKCS11_MKEK_LABEL"
+    barbican-manage hsm check_hmac --label "$BARBICAN_PKCS11_HMAC_LABEL" || \
+    barbican-manage hsm gen_hmac --label "$BARBICAN_PKCS11_HMAC_LABEL"
+}

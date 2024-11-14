@@ -6,6 +6,7 @@ BARBICAN_PLUGIN=$DEST/barbican/devstack
 source $BARBICAN_PLUGIN/lib/barbican
 
 if is_service_enabled barbican; then
+
     if [[ "$1" == "stack" && "$2" == "install" ]]; then
         echo_summary "Installing Barbican"
         stack_install_service barbican
@@ -22,6 +23,11 @@ if is_service_enabled barbican; then
             echo_summary "Installing Vault"
             install_vault
         fi
+        if is_service_enabled barbican-softhsm; then
+            echo_summary "Initializing SoftHSM"
+            source $BARBICAN_PLUGIN/lib/softhsm
+            initialize_softhsm
+        fi
     elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
         echo_summary "Configuring Barbican"
         configure_barbican
@@ -36,6 +42,10 @@ if is_service_enabled barbican; then
         if is_service_enabled barbican-vault; then
             echo_summary "Configuring Vault plugin"
             configure_vault_plugin
+        fi
+        if is_service_enabled barbican-softhsm; then
+            echo_summary "Configuring PKCS#11 plugin with SoftHSM"
+            configure_softhsm_plugin
         fi
 
         # Configure Cinder, Nova and Glance to use Barbican
@@ -55,6 +65,10 @@ if is_service_enabled barbican; then
         if is_service_enabled pykmip-server; then
             echo_summary "Starting PyKMIP server"
             start_pykmip
+        fi
+        if is_service_enabled barbican-softhsm; then
+            echo_summary "Generating PKCS#11 master keys"
+            generate_softhsm_master_keys
         fi
     elif [[ "$1" == "stack" && "$2" == "test-config" ]]; then
         if is_service_enabled tempest; then
